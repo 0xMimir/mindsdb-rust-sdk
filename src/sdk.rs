@@ -1,8 +1,8 @@
-use reqwest::Client;
-use serde::de::DeserializeOwned;
+use reqwest::{Client, Method};
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
-    models::{CreateDatabaseRequestParams, Database, QueryRequest, QueryResponse, Response},
+    models::{CreateDatabaseRequestParams, Database, QueryRequest, QueryResponse, Response, Project},
     Error, Result,
 };
 
@@ -12,6 +12,13 @@ pub struct MindsDb {
 }
 
 impl MindsDb {
+    pub fn new(server: &str) -> Self {
+        Self {
+            server: server.to_owned(),
+            client: Client::default(),
+        }
+    }
+
     /// Returns all databases
     pub async fn get_all_databases(&self) -> Result<Vec<Database>> {
         let params = QueryRequest::new_default("SHOW FULL DATABASES");
@@ -42,18 +49,15 @@ impl MindsDb {
         port: i64,
         database: &str,
         name: Option<&str>,
-        user: Option<&str>,
-        password: Option<&str>,
+        auth: Option<(&str, &str)>,
     ) -> Result<()> {
         let mut query = CreateDatabaseRequestParams::new(engine, host, port, database);
         if let Some(name) = name {
             query.name(name)
         }
-        if let Some(user) = user {
-            query.user(user)
-        }
-        if let Some(password) = password {
-            query.password(password)
+        if let Some((user, password)) = auth {
+            query.user(user);
+            query.password(password);
         }
 
         let response = self.query::<Response>(query.try_into()?).await?;
@@ -73,6 +77,11 @@ impl MindsDb {
         }
     }
 
+    /// Get all projects
+    pub async fn get_projects(&self) -> Result<Vec<Project>>{
+        self.request("/api/projects", Method::GET, ()).await
+    }
+
     pub async fn run_query<T>(&self, query: &str, db: &str) -> Result<T>
     where
         T: DeserializeOwned + 'static,
@@ -85,11 +94,18 @@ impl MindsDb {
     where
         T: DeserializeOwned + 'static,
     {
-        let url = format!("{}/api/sql/query", self.server);
+        self.request("/api/sql/query", Method::POST, params).await
+    }
 
+    async fn request<B, R>(&self, endpoint: &str, method: Method, body: B) -> Result<R>
+    where
+        B: Serialize + Send + Sync,
+        R: DeserializeOwned + 'static,
+    {
+        let url = format!("{}/{}", self.server, endpoint);
         self.client
-            .post(url)
-            .json(&params)
+            .request(method, url)
+            .json(&body)
             .send()
             .await?
             .json()

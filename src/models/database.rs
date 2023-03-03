@@ -11,8 +11,11 @@ pub struct Database {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum DbType {
+    #[serde(rename = "system")]
     System,
+    #[serde(rename = "project")]
     Project,
+    #[serde(rename = "data")]
     Data,
 }
 
@@ -68,7 +71,7 @@ impl TryFrom<CreateDatabaseRequestParams> for QueryRequest {
         let parameters = serde_json::to_string(&value.params)?;
 
         let query = format!(
-            "CREATE DATABASE {} WITH ENGINE = {}, PARAMETERS = {}",
+            "CREATE DATABASE {} WITH ENGINE = '{}', PARAMETERS = {}",
             name, value.engine, parameters
         );
 

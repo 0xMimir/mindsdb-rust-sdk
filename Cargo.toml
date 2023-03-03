@@ -1,5 +1,5 @@
 [package]
-name = "mindsdb-rust-sdk"
+name = "mindsdb"
 version = "0.1.0"
 edition = "2021"
 
