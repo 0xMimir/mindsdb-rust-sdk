@@ -2,7 +2,10 @@ use reqwest::{Client, Method};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
-    models::{CreateDatabaseRequestParams, Database, QueryRequest, QueryResponse, Response, Project},
+    models::{
+        CreateDatabaseRequestParams, CreateTable, Database, Project, QueryRequest, QueryResponse,
+        Response, Table,
+    },
     Error, Result,
 };
 
@@ -60,26 +63,37 @@ impl MindsDb {
             query.password(password);
         }
 
-        let response = self.query::<Response>(query.try_into()?).await?;
-        match response.error_message {
-            Some(message) => Err(Error::InternalError(message)),
-            None => Ok(()),
-        }
+        self.query::<Response>(query.try_into()?).await?.to_result()
     }
 
     /// Deletes database matching name
     pub async fn delete_database(&self, name: &str) -> Result<()> {
         let query = QueryRequest::new_default(&format!("DROP DATABASE {}", name));
-        let response = self.query::<Response>(query).await?;
-        match response.error_message {
-            Some(message) => Err(Error::InternalError(message)),
-            None => Ok(()),
-        }
+        self.query::<Response>(query).await?.to_result()
     }
 
     /// Get all projects
-    pub async fn get_projects(&self) -> Result<Vec<Project>>{
+    pub async fn get_projects(&self) -> Result<Vec<Project>> {
         self.request("/api/projects", Method::GET, ()).await
+    }
+
+    /// Returns all tables from context
+    pub async fn get_tables(&self, context: &str) -> Result<Vec<Table>> {
+        let query = QueryRequest::new("SHOW FULL TABLES", context);
+        self.query::<QueryResponse<Table>>(query)
+            .await
+            .map(|response| response.data)
+    }
+
+    /// Create a table, this query is query used to form data
+    pub async fn create_table(
+        &self,
+        table_name: &str,
+        integration: &str,
+        query: &str,
+    ) -> Result<()> {
+        let table = CreateTable::new(integration, table_name, query);
+        self.query::<Response>(table.into()).await?.to_result()
     }
 
     pub async fn run_query<T>(&self, query: &str, db: &str) -> Result<T>

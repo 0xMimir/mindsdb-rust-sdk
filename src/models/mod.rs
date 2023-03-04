@@ -9,3 +9,6 @@ pub use response::*;
 
 mod project;
 pub use project::*;
+
+mod table;
+pub use table::*;
