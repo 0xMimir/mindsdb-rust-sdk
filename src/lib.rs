@@ -20,7 +20,7 @@
 //! * CRUD actions related to models
 //! * CRUD actions related to views
 //! 
-//! ## Error handeling
+//! ## Error handling
 //! 
 //! MindsDB errors are handled with `Error` enum, it contains error for libraries used, `Error::InternalError` is error returned when query is invalid, but syntax is accepted by api, some of examples are:
 //! ```
